@@ -7,7 +7,7 @@ import * as nodePath from 'path';
 import * as vscode from 'vscode';
 import { parseDiff, parsePatch } from '../common/diffHunk';
 import { getDiffLineByPosition, getLastDiffLine, mapCommentsToHead, mapHeadLineToDiffHunkPosition, mapOldPositionToNew, getZeroBased, getAbsolutePosition } from '../common/diffPositionMapping';
-import { toReviewUri, fromReviewUri, fromPRUri, ReviewUriParams } from '../common/uri';
+import { toReviewUri, fromReviewUri, fromPRUri, ReviewUriParams, toFileChangeNodeUri } from '../common/uri';
 import { groupBy, formatError } from '../common/utils';
 import { Comment } from '../common/comment';
 import { GitChangeType, InMemFileChange } from '../common/file';
@@ -640,15 +640,17 @@ export class ReviewManager implements vscode.DecorationProvider {
 					}
 				}
 
-				const uri = vscode.Uri.parse(change.fileName);
+				const filePath = nodePath.resolve(this._repository.rootUri.fsPath, change.fileName);
+				const uri = vscode.Uri.file(filePath);
 				let changedItem = new GitFileChangeNode(
 					this.prFileChangesProvider.view,
 					pr,
 					change.status,
 					change.fileName,
 					change.blobUrl,
-					toReviewUri(uri, null, null, change.status === GitChangeType.DELETE ? '' : pr.head.sha, false, { base: false }),
-					toReviewUri(uri, null, null, change.status === GitChangeType.ADD ? '' : pr.base.sha, false, { base: true }),
+					change.status === GitChangeType.DELETE ?
+						toReviewUri(uri, null, null, change.status === GitChangeType.DELETE ? '' : pr.head.sha, false, { base: false }) : uri,
+					toReviewUri(uri, change.fileName, null, change.status === GitChangeType.ADD ? '' : pr.base.sha, false, { base: true }),
 					isPartial,
 					diffHunks,
 					activeComments.filter(comment => comment.path === change.fileName),
